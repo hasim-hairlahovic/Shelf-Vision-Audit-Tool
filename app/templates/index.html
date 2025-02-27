@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Shelf Vision Audit Tool{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Upload Files for Analysis</h4>
+                {% if ai_available %}
+                <span class="badge bg-success">AI Enabled</span>
+                {% else %}
+                <span class="badge bg-warning text-dark">Basic Mode</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('upload_files') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                    <div class="mb-3">
+                        <label for="image" class="form-label">Shelf Image</label>
+                        <input type="file" class="form-control" id="image" name="image" accept=".jpg,.jpeg,.png" required>
+                        <div class="form-text">Upload a clear image of the store shelf.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="metadata" class="form-label">Metadata File</label>
+                        <input type="file" class="form-control" id="metadata" name="metadata" accept=".txt" required>
+                        <div class="form-text">Upload a text file containing product metadata.</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Analyze {% if ai_available %}with AI{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4 shadow">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">About This Tool</h4>
+            </div>
+            <div class="card-body">
+                <p>The Shelf Vision Audit Tool {% if ai_available %}uses AI to{% else %}helps you{% endif %} identify anomalies in shelf images by comparing them with expected metadata.</p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">{% if ai_available %}AI{% else %}Detection{% endif %} Features</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-image text-primary me-2"></i> Image quality assessment
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-box text-primary me-2"></i> Product detection
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-tag text-primary me-2"></i> Price tag recognition
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-grid text-primary me-2"></i> Shelf layout analysis
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card h-100 border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0">Anomaly Detection</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-exclamation-triangle text-danger me-2"></i> Missing products
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-exclamation-triangle text-danger me-2"></i> Misaligned product information
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-exclamation-triangle text-danger me-2"></i> Price discrepancies
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-exclamation-triangle text-danger me-2"></i> Poor image quality
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <strong>Sample Files:</strong> You can use the provided sample metadata file (<code>sample_metadata.txt</code>) for testing.
+                </div>
+                
+                {% if not ai_available %}
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Note:</strong> Running in basic mode without AI libraries. Install PyTorch and Transformers for full AI capabilities.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

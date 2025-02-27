@@ -1,0 +1,10 @@
+flask==2.3.3
+werkzeug==2.3.7
+pillow==10.0.0
+numpy>=1.26.0
+opencv-python==4.8.0.76
+tokenizers==0.13.3
+transformers==4.32.1
+torch>=2.0.1
+python-dotenv==1.0.0
+flask-wtf==1.1.1 

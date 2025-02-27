@@ -1,0 +1,19 @@
+name: shelf-vision
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - flask=2.3.3
+  - werkzeug=2.3.7
+  - pillow=10.0.0
+  - numpy>=1.26.0
+  - pytorch>=2.0.1
+  - pip:
+    - opencv-python==4.8.0.76
+    - transformers==4.32.1
+    - tokenizers==0.13.3
+    - python-dotenv==1.0.0
+    - flask-wtf==1.1.1 

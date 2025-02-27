@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}Analysis Results - Shelf Vision Audit Tool{% endblock %}
+
+{% block extra_css %}
+<style>
+    .highlight-box {
+        position: absolute;
+        border: 3px solid;
+        pointer-events: none;
+        transition: all 0.3s ease;
+    }
+    
+    .highlight-box.anomaly {
+        border-color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    
+    .highlight-box.product {
+        border-color: #198754;
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+    
+    .image-container {
+        position: relative;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    
+    .image-container img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .issue-card {
+        transition: all 0.3s ease;
+    }
+    
+    .issue-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .ai-badge {
+        background-color: #6f42c1;
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: bold;
+        margin-left: 0.5rem;
+    }
+    
+    .confidence-bar {
+        height: 6px;
+        background-color: #e9ecef;
+        border-radius: 3px;
+        margin-top: 5px;
+    }
+    
+    .confidence-level {
+        height: 100%;
+        border-radius: 3px;
+        background-color: #0d6efd;
+    }
+    
+    .confidence-high {
+        background-color: #198754;
+    }
+    
+    .confidence-medium {
+        background-color: #fd7e14;
+    }
+    
+    .confidence-low {
+        background-color: #dc3545;
+    }
+    
+    .product-card {
+        border-left: 4px solid #198754;
+    }
+    
+    .anomaly-card {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .quality-card {
+        border-left: 4px solid #fd7e14;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Analyzed Image</h4>
+                <div>
+                    {% if results.ai_enabled %}
+                    <span class="badge bg-success me-2">AI Enhanced</span>
+                    {% endif %}
+                    <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">New Analysis</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="image-container">
+                    <img src="{{ results.image_url }}" alt="Analyzed shelf image" id="analyzed-image" class="img-fluid">
+                    
+                    {% for product in results.detected_products %}
+                    <div class="highlight-box product" 
+                         data-x="{{ product.x }}" 
+                         data-y="{{ product.y }}" 
+                         data-width="{{ product.width }}" 
+                         data-height="{{ product.height }}">
+                    </div>
+                    {% endfor %}
+                    
+                    {% for anomaly in results.anomalies %}
+                    {% if anomaly.coordinates %}
+                    <div class="highlight-box anomaly" 
+                         data-x="{{ anomaly.coordinates.x }}" 
+                         data-y="{{ anomaly.coordinates.y }}" 
+                         data-width="{{ anomaly.coordinates.width }}" 
+                         data-height="{{ anomaly.coordinates.height }}">
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <button class="btn btn-outline-primary btn-sm" onclick="toggleHighlights()">
+                        <i class="bi bi-eye"></i> Toggle Highlights
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="exportResults()">
+                        <i class="bi bi-download"></i> Export Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Analysis Summary</h4>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="text-center">
+                        <h5>{{ results.detected_products|length }}</h5>
+                        <p class="text-muted">Products Detected</p>
+                    </div>
+                    <div class="text-center">
+                        <h5>{{ results.metadata|length }}</h5>
+                        <p class="text-muted">Products in Metadata</p>
+                    </div>
+                    <div class="text-center">
+                        <h5>{{ results.anomalies|length + results.quality_issues|length }}</h5>
+                        <p class="text-muted">Issues Found</p>
+                    </div>
+                </div>
+                
+                {% if results.quality_issues %}
+                <h5 class="mt-4">Image Quality Issues</h5>
+                <div class="list-group">
+                    {% for issue in results.quality_issues %}
+                    <div class="list-group-item list-group-item-action quality-card">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                {{ issue.type|replace('_', ' ')|capitalize }}
+                                {% if issue.type == 'ai_quality' %}
+                                <span class="ai-badge">AI</span>
+                                {% endif %}
+                            </h6>
+                            <small class="text-{{ issue.severity }}">{{ issue.severity|capitalize }}</small>
+                        </div>
+                        <p class="mb-1">{{ issue.description }}</p>
+                        
+                        {% if issue.type == 'ai_quality' and issue.confidence is defined %}
+                        <div class="confidence-bar">
+                            <div class="confidence-level confidence-{{ 'high' if issue.confidence > 0.8 else 'medium' if issue.confidence > 0.6 else 'low' }}" 
+                                 style="width: {{ issue.confidence * 100 }}%"></div>
+                        </div>
+                        <small class="text-muted">Confidence: {{ (issue.confidence * 100)|int }}%</small>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if results.anomalies %}
+                <h5 class="mt-4">Detected Anomalies</h5>
+                <div class="list-group">
+                    {% for anomaly in results.anomalies %}
+                    <div class="list-group-item list-group-item-action anomaly-card">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ anomaly.type|replace('_', ' ')|capitalize }}</h6>
+                            <small class="text-{{ anomaly.severity }}">{{ anomaly.severity|capitalize }}</small>
+                        </div>
+                        <p class="mb-1">{{ anomaly.description }}</p>
+                        
+                        {% if anomaly.type == 'price_mismatch' and anomaly.detected_price %}
+                        <div class="d-flex justify-content-between mt-2">
+                            <span class="badge bg-light text-dark">Expected: {{ anomaly.metadata_item.price }}</span>
+                            <span class="badge bg-danger">Detected: {{ anomaly.detected_price }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card shadow">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0">Metadata</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>SKU</th>
+                                <th>Price</th>
+                                <th>Section</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in results.metadata %}
+                            <tr>
+                                <td>{{ item.sku }}</td>
+                                <td>{{ item.price }}</td>
+                                <td>{{ item.section }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Store results data for export -->
+<script>
+    window.resultsData = {{ results|tojson }};
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const image = document.getElementById('analyzed-image');
+        const highlightBoxes = document.querySelectorAll('.highlight-box');
+        
+        function adjustHighlightBoxes() {
+            const imageRect = image.getBoundingClientRect();
+            const imageNaturalWidth = image.naturalWidth;
+            const imageNaturalHeight = image.naturalHeight;
+            const scaleX = imageRect.width / imageNaturalWidth;
+            const scaleY = imageRect.height / imageNaturalHeight;
+            
+            highlightBoxes.forEach(box => {
+                const x = parseInt(box.dataset.x) * scaleX;
+                const y = parseInt(box.dataset.y) * scaleY;
+                const width = parseInt(box.dataset.width) * scaleX;
+                const height = parseInt(box.dataset.height) * scaleY;
+                
+                box.style.left = `${x}px`;
+                box.style.top = `${y}px`;
+                box.style.width = `${width}px`;
+                box.style.height = `${height}px`;
+            });
+        }
+        
+        // Adjust boxes when image loads
+        image.addEventListener('load', adjustHighlightBoxes);
+        
+        // Also adjust on window resize
+        window.addEventListener('resize', adjustHighlightBoxes);
+        
+        // Initial adjustment
+        if (image.complete) {
+            adjustHighlightBoxes();
+        }
+    });
+    
+    function toggleHighlights() {
+        const highlightBoxes = document.querySelectorAll('.highlight-box');
+        highlightBoxes.forEach(box => {
+            box.classList.toggle('d-none');
+        });
+    }
+    
+    function exportResults() {
+        // Get results data from the page
+        const resultsData = window.resultsData;
+        
+        if (!resultsData) {
+            alert('No results data available to export');
+            return;
+        }
+        
+        // Create a blob and download link
+        const dataStr = JSON.stringify(resultsData, null, 2);
+        const dataBlob = new Blob([dataStr], {type: 'application/json'});
+        
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(dataBlob);
+        downloadLink.download = 'shelf_analysis_results.json';
+        
+        // Trigger download
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+    }
+</script>
+{% endblock %} 
